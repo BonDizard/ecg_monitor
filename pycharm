@@ -1,0 +1,38 @@
+from flask import Flask, request, jsonify
+import tensorflow as tf
+import numpy as np
+
+app = Flask(_name_)
+
+# Load your trained model
+model = tf.keras.models.load_model(r'C:\Users\sunil\PycharmProjects\pythonProject2\best_model.h5')
+
+# Class label mapping
+label_dict = {0: 'Non-ecotic beats (normal beat)', 1: 'Supraventricular ectopic beats', 2: 'Ventricular ectopic beats', 3: 'Fusion Beats', 4: 'Unknown Beats'}
+
+@app.route('/predict', methods=['POST'])
+def predict():
+    data = request.json.get('data', [])
+    processed_data = preprocess_data(data)
+    predictions = model.predict(processed_data)
+    class_labels = map_predictions_to_labels(predictions)
+    return jsonify({'result': class_labels})
+
+def preprocess_data(data):
+    np_data = np.array(data)
+    if np_data.ndim == 1:
+        np_data = np_data.reshape(1, -1)
+    if np_data.shape[1] > 186:
+        np_data = np_data[:, :186]
+    elif np_data.shape[1] < 186:
+        np_data = np.pad(np_data, ((0, 0), (0, 186 - np_data.shape[1])), 'constant', constant_values=0)
+    processed_data = np.expand_dims(np_data, -1)
+    return processed_data
+
+def map_predictions_to_labels(predictions):
+    label_indices = np.argmax(predictions, axis=1)
+    labels = [label_dict[i] for i in label_indices]
+    return labels
+
+if _name_ == '_main_':
+    app.run(host='0.0.0.0', port=5000, debug=True)
