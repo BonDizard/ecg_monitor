@@ -1,8 +1,8 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:chart_sparkline/chart_sparkline.dart';
 import 'package:firebase_database/firebase_database.dart';
-import 'package:lottie/lottie.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -63,6 +63,31 @@ class _GraphPageState extends State<GraphPage> {
 
   @override
   Widget build(BuildContext context) {
+    List<double> noob = [
+      0.98,
+      0.93,
+      0.68,
+      0.25,
+      0.15,
+      0.19,
+      0.15,
+      0.09,
+      0.06,
+      0.05,
+      0.04,
+      0.06,
+      0.07,
+      0.06,
+      0.05,
+      0.07,
+      0.06,
+      0.06,
+      0.07,
+      0.07,
+      0.10,
+      0.08,
+      0.09
+    ];
     return Scaffold(
       appBar: AppBar(
         title: const Center(
@@ -78,38 +103,66 @@ class _GraphPageState extends State<GraphPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Center(
-              child: Sparkline(data: lastFiveData),
+            SizedBox(
+              height: 200,
+              width: 400,
+              child: Center(
+                child: Sparkline(
+                    backgroundColor: Colors.grey,
+                    fillColor: Colors.red,
+                    data: lastFiveData),
+              ),
             ),
             Text('$lastFiveData'),
             ElevatedButton(
               onPressed: () async {
-                double minValue = exactValues.reduce((a, b) => a < b ? a : b);
-                double maxValue = exactValues.reduce((a, b) => a > b ? a : b);
-                // Normalize data between 0 and 1
-                List<double> normalizedData = data
-                    .map((value) => normalizeData(value, minValue, maxValue))
-                    .toList();
-                print('$normalizedData');
-                // Send the normalized data to the Flask server
-                final response = await http.post(
-                  Uri.parse(
-                      'http://localhost:5000/predict'), // Adjust the port if needed
-                  headers: {'Content-Type': 'application/json'},
-                  body: jsonEncode({'data': normalizedData}),
-                );
+                try {
+                  double minValue = exactValues.reduce((a, b) => a < b ? a : b);
+                  double maxValue = exactValues.reduce((a, b) => a > b ? a : b);
 
-                if (response.statusCode == 200) {
-                  // Handle the response from the Flask server
-                  var result = jsonDecode(response.body)['result'];
-                  print('Prediction result: $result');
-                } else {
-                  print('Failed to connect to the Flask server');
+                  // Normalize data between 0 and 1
+                  List<double> normalizedData = data
+                      .map(
+                        (value) => normalizeData(
+                          value,
+                          minValue,
+                          maxValue,
+                        ),
+                      )
+                      .toList();
+                  if (kDebugMode) {
+                    print('$normalizedData');
+                  }
+
+                  // Send the predefined data (noob) to the Flask server
+                  final response = await http.post(
+                    Uri.parse('http://10.176.240.78:5000/predict'),
+                    headers: {'Content-Type': 'application/json'},
+                    body: jsonEncode({'data': noob}),
+                  );
+
+                  if (response.statusCode == 200) {
+                    var result = jsonDecode(response.body)['result'];
+                    if (kDebugMode) {
+                      print('Prediction result: $result');
+                    }
+                  } else {
+                    if (kDebugMode) {
+                      print(
+                          'Failed to connect to the Flask server. Status code: ${response.statusCode}');
+                    }
+                    if (kDebugMode) {
+                      print('Server response: ${response.body}');
+                    }
+                  }
+                } catch (e) {
+                  if (kDebugMode) {
+                    print('Error connecting to the Flask server: $e');
+                  }
                 }
-                print('$normalizedData');
               },
               child: const Text('Predict'),
-            )
+            ),
           ],
         ),
       ),
