@@ -42,8 +42,8 @@ class _GraphPageState extends State<GraphPage> {
         });
 
         // Keep only the last 10 values
-        if (data.length > 10) {
-          lastFiveData = data.sublist(data.length - 10);
+        if (data.length > 20) {
+          lastFiveData = data.sublist(data.length - 20);
         } else {
           lastFiveData = List.from(data);
         }
@@ -63,6 +63,39 @@ class _GraphPageState extends State<GraphPage> {
     super.dispose();
   }
 
+  List<double> normalizeList(List<double> inputList) {
+    if (inputList.isEmpty) {
+      return []; // or handle the empty case appropriately
+    }
+
+    double minValue =
+        inputList.reduce((value, element) => value < element ? value : element);
+    double maxValue =
+        inputList.reduce((value, element) => value > element ? value : element);
+
+    return inputList
+        .map((value) => (value - minValue) / (maxValue - minValue))
+        .toList();
+  }
+
+  List<double> processDoubleList(List<double> inputList) {
+    // Check if the input list is empty
+    if (inputList.isEmpty) {
+      return []; // or handle the empty case appropriately
+    }
+
+    // Reduce the list of double values
+    double reducedValue = inputList.reduce((value, element) => value + element);
+
+    // Format the reduced value to have two digits after the decimal point
+    double formattedValue = double.parse(reducedValue.toStringAsFixed(2));
+
+    // Create a new list with the formatted value
+    List<double> resultList = [formattedValue];
+
+    return resultList;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -77,31 +110,19 @@ class _GraphPageState extends State<GraphPage> {
       ),
       body: Center(
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            SizedBox(
-              height: 200,
-              width: 400,
-              child: Center(
-                child: Sparkline(
-                  backgroundColor: Colors.grey,
-                  fillColor: Colors.red,
-                  data: lastFiveData,
-                ),
-              ),
+            Sparkline(
+              data: normalizeList(lastFiveData),
             ),
-            Text('$lastFiveData'),
+            Text('${normalizeList(lastFiveData)}'),
             ElevatedButton(
               onPressed: () async {
                 try {
-                  double minValue = exactValues.reduce((a, b) => a < b ? a : b);
-                  double maxValue = exactValues.reduce((a, b) => a > b ? a : b);
-
                   // Normalize data between 0 and 1
-                  List<double> normalizedData = data
-                      .map((value) => normalizeData(value, minValue, maxValue))
-                      .toList();
+                  List<double> normalizedData = normalizeList(data);
+
                   if (kDebugMode) {
                     print('$normalizedData');
                   }
@@ -113,7 +134,7 @@ class _GraphPageState extends State<GraphPage> {
 
                   // Send the predefined data (noob) to the Flask server
                   final response = await http.post(
-                    Uri.parse('http://10.176.240.78:5000/predict'),
+                    Uri.parse('http://192.168.150.201:5000/predict'),
                     headers: {'Content-Type': 'application/json'},
                     body: jsonEncode({'data': normalizedData}),
                   );
