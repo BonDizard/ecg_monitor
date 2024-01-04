@@ -117,62 +117,77 @@ class _GraphPageState extends State<GraphPage> {
               data: normalizeList(lastFiveData),
             ),
             Text('${normalizeList(lastFiveData)}'),
-            ElevatedButton(
-              onPressed: () async {
-                try {
-                  // Normalize data between 0 and 1
-                  List<double> normalizedData = normalizeList(data);
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        data.clear();
+                        exactValues.clear();
+                        lastFiveData.clear();
+                      });
+                    },
+                    child: Icon(Icons.refresh)),
+                ElevatedButton(
+                  onPressed: () async {
+                    try {
+                      // Normalize data between 0 and 1
+                      List<double> normalizedData = normalizeList(data);
 
-                  if (kDebugMode) {
-                    print('$normalizedData');
-                  }
+                      if (kDebugMode) {
+                        print('$normalizedData');
+                      }
 
-                  setState(() {
-                    isLoading =
-                        true; // Set loading to true before making the request
-                  });
+                      setState(() {
+                        isLoading =
+                            true; // Set loading to true before making the request
+                      });
 
-                  // Send the predefined data (noob) to the Flask server
-                  final response = await http.post(
-                    Uri.parse('http://192.168.150.201:5000/predict'),
-                    headers: {'Content-Type': 'application/json'},
-                    body: jsonEncode({'data': normalizedData}),
-                  );
+                      // Send the predefined data (noob) to the Flask server
+                      final response = await http.post(
+                        Uri.parse('http://192.168.150.201:5000/predict'),
+                        headers: {'Content-Type': 'application/json'},
+                        body: jsonEncode({'data': normalizedData}),
+                      );
 
-                  if (response.statusCode == 200) {
-                    var predictionResult = jsonDecode(response.body)['result'];
-                    setState(() {
-                      result = predictionResult.toString();
-                      isLoading =
-                          false; // Set loading to false after getting the result
-                    });
-                    if (kDebugMode) {
-                      print('Prediction result: $result');
+                      if (response.statusCode == 200) {
+                        var predictionResult =
+                            jsonDecode(response.body)['result'];
+                        setState(() {
+                          result = predictionResult.toString();
+                          isLoading =
+                              false; // Set loading to false after getting the result
+                        });
+                        if (kDebugMode) {
+                          print('Prediction result: $result');
+                        }
+                      } else {
+                        if (kDebugMode) {
+                          print(
+                              'Failed to connect to the Flask server. Status code: ${response.statusCode}');
+                        }
+                        if (kDebugMode) {
+                          print('Server response: ${response.body}');
+                        }
+                        setState(() {
+                          isLoading =
+                              false; // Set loading to false in case of an error
+                        });
+                      }
+                    } catch (e) {
+                      if (kDebugMode) {
+                        print('Error connecting to the Flask server: $e');
+                      }
+                      setState(() {
+                        isLoading =
+                            false; // Set loading to false in case of an exception
+                      });
                     }
-                  } else {
-                    if (kDebugMode) {
-                      print(
-                          'Failed to connect to the Flask server. Status code: ${response.statusCode}');
-                    }
-                    if (kDebugMode) {
-                      print('Server response: ${response.body}');
-                    }
-                    setState(() {
-                      isLoading =
-                          false; // Set loading to false in case of an error
-                    });
-                  }
-                } catch (e) {
-                  if (kDebugMode) {
-                    print('Error connecting to the Flask server: $e');
-                  }
-                  setState(() {
-                    isLoading =
-                        false; // Set loading to false in case of an exception
-                  });
-                }
-              },
-              child: const Text('Predict'),
+                  },
+                  child: const Text('Predict'),
+                ),
+              ],
             ),
             if (isLoading)
               const CircularProgressIndicator()
