@@ -1,0 +1,37 @@
+#include <WiFi.h>
+#include <ESP32Firebase.h>
+
+#define REFERENCE_URL "https://ecgdatabase-77128-default-rtdb.firebaseio.com/"
+Firebase firebase(REFERENCE_URL);
+
+#define VARIABLE_LABEL "sensor"
+#define DEVICE_LABEL "esp32"
+#define SENSOR A0
+
+
+void setup() {
+  Serial.begin(9600);
+  WiFi.begin("motoedge", "9036346064");
+
+  Serial.print("Connecting to WiFi");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.println(".");
+  }
+  Serial.println();
+  Serial.println("WiFi Connected");
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP());
+}
+
+void loop() {
+  if (WiFi.status() == WL_CONNECTED) {
+      float sensorValue = analogRead(SENSOR);
+      firebase.setFloat("ecg/sensor", sensorValue);
+      Serial.print(currentTime);
+      Serial.print(" - Sensor Reading: ");
+      Serial.println(sensorValue);
+  } else {
+    Serial.println("Not connected to WiFi");
+  }
+}
