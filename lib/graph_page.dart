@@ -19,6 +19,8 @@ class _GraphPageState extends State<GraphPage> {
   List<double> exactValues = [];
   final databaseReference = FirebaseDatabase.instance.ref().child('ecg/sensor');
   late StreamSubscription subscription;
+  bool isLoading = false;
+  String result = '';
 
   // Function to normalize data between 0 and 1
   double normalizeData(double value, double minValue, double maxValue) {
@@ -63,31 +65,6 @@ class _GraphPageState extends State<GraphPage> {
 
   @override
   Widget build(BuildContext context) {
-    List<double> noob = [
-      0.98,
-      0.93,
-      0.68,
-      0.25,
-      0.15,
-      0.19,
-      0.15,
-      0.09,
-      0.06,
-      0.05,
-      0.04,
-      0.06,
-      0.07,
-      0.06,
-      0.05,
-      0.07,
-      0.06,
-      0.06,
-      0.07,
-      0.07,
-      0.10,
-      0.08,
-      0.09
-    ];
     return Scaffold(
       appBar: AppBar(
         title: const Center(
@@ -108,9 +85,10 @@ class _GraphPageState extends State<GraphPage> {
               width: 400,
               child: Center(
                 child: Sparkline(
-                    backgroundColor: Colors.grey,
-                    fillColor: Colors.red,
-                    data: lastFiveData),
+                  backgroundColor: Colors.grey,
+                  fillColor: Colors.red,
+                  data: lastFiveData,
+                ),
               ),
             ),
             Text('$lastFiveData'),
@@ -122,27 +100,31 @@ class _GraphPageState extends State<GraphPage> {
 
                   // Normalize data between 0 and 1
                   List<double> normalizedData = data
-                      .map(
-                        (value) => normalizeData(
-                          value,
-                          minValue,
-                          maxValue,
-                        ),
-                      )
+                      .map((value) => normalizeData(value, minValue, maxValue))
                       .toList();
                   if (kDebugMode) {
                     print('$normalizedData');
                   }
 
+                  setState(() {
+                    isLoading =
+                        true; // Set loading to true before making the request
+                  });
+
                   // Send the predefined data (noob) to the Flask server
                   final response = await http.post(
                     Uri.parse('http://10.176.240.78:5000/predict'),
                     headers: {'Content-Type': 'application/json'},
-                    body: jsonEncode({'data': noob}),
+                    body: jsonEncode({'data': normalizedData}),
                   );
 
                   if (response.statusCode == 200) {
-                    var result = jsonDecode(response.body)['result'];
+                    var predictionResult = jsonDecode(response.body)['result'];
+                    setState(() {
+                      result = predictionResult.toString();
+                      isLoading =
+                          false; // Set loading to false after getting the result
+                    });
                     if (kDebugMode) {
                       print('Prediction result: $result');
                     }
@@ -154,15 +136,27 @@ class _GraphPageState extends State<GraphPage> {
                     if (kDebugMode) {
                       print('Server response: ${response.body}');
                     }
+                    setState(() {
+                      isLoading =
+                          false; // Set loading to false in case of an error
+                    });
                   }
                 } catch (e) {
                   if (kDebugMode) {
                     print('Error connecting to the Flask server: $e');
                   }
+                  setState(() {
+                    isLoading =
+                        false; // Set loading to false in case of an exception
+                  });
                 }
               },
               child: const Text('Predict'),
             ),
+            if (isLoading)
+              const CircularProgressIndicator()
+            else
+              Text('result: ${result.toString()}'),
           ],
         ),
       ),
